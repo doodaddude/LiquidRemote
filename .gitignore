@@ -1,0 +1,27 @@
+# Xcode & macOS
+.DS_Store
+*.swp
+*~
+.Spotlight-V100
+.Trashes
+
+# Build Artifacts
+build/
+*.app/
+*.dSYM/
+LiquidRemoteBinary
+.build/
+*.o
+*.out
+
+# Archives
+*.zip
+*.dmg
+*.pkg
+
+# User Specific
+.idea/
+.vscode/
+*.xcuserdata/
+xcuserdata/
+DerivedData/
