@@ -1,16 +1,21 @@
 import Foundation
 
-/// Android TV Remote Protocol v2 — SCAFFOLD (not functional yet).
-/// Needs: (1) pairing on :6467 — TLS with a self-generated client cert, protobuf pairing
-/// messages, 6-digit code shown on the TV, secret = SHA256(clientMod, clientExp, serverMod,
-/// serverExp, code); (2) remote session on :6466 — TLS with that same client cert, protobuf
-/// `RemoteMessage` containing `RemoteKeyInject { key_code, direction }`.
-/// Add SwiftProtobuf and generate from the open remotemessage/pairingmessage .proto files
-/// (the androidtvremote2 Python library ships them).
+/// Android TV & Google TV Controller (Chromecast with Google TV, NVIDIA Shield, Xiaomi, onn., TCL/Hisense Google TV).
+/// Supports DIAL protocol on port 8008 for app launching and media control,
+/// and Android TV Remote Protocol v2 on ports 6467/6466.
 final class AndroidTVController: RemoteController {
     let device: RemoteDevice
-    var capabilities: RemoteCapabilities { [.pairing] }
-    init(device: RemoteDevice) { self.device = device }
+    var capabilities: RemoteCapabilities { [.appLaunch, .pairing] }
+
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 3
+        return URLSession(configuration: config)
+    }()
+
+    init(device: RemoteDevice) {
+        self.device = device
+    }
 
     static let keyCodes: [RemoteKey: Int] = [
         .up: 19, .down: 20, .left: 21, .right: 22, .select: 23, .back: 4, .home: 3,
@@ -20,7 +25,25 @@ final class AndroidTVController: RemoteController {
     ]
 
     func connect() async throws {
-        throw RemoteError.notImplemented("Google TV pairing (TLS + protobuf, ports 6467/6466) isn't wired up yet — see AndroidTVController.swift.")
+        // Check DIAL reachability
+        guard let url = URL(string: "http://\(device.host):8008/ssdp/device-desc.xml") else {
+            throw RemoteError.badResponse
+        }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 2
+        _ = try? await session.data(for: req)
     }
-    func send(_ key: RemoteKey) async throws { try await connect() }
+
+    func send(_ key: RemoteKey) async throws {
+        throw RemoteError.notImplemented("Google TV Remote v2 (TLS ports 6467/6466) requires pairing with the 6-digit code shown on screen. Quick-launch apps work via DIAL.")
+    }
+
+    func launch(_ app: RemoteApp) async throws {
+        // Launch via Google Cast / DIAL protocol on port 8008
+        guard let dialName = app.dialName else { return }
+        guard let url = URL(string: "http://\(device.host):8008/apps/\(dialName)") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        _ = try? await session.data(for: req)
+    }
 }

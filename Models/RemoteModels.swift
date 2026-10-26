@@ -28,15 +28,31 @@ struct NowPlaying: Equatable {
 // MARK: - Brands
 
 enum DeviceBrand: String, Codable, CaseIterable, Identifiable {
-    case roku, appleTV, googleTV, lgWebOS, generic, universal
+    case roku
+    case samsungTizen
+    case lgWebOS
+    case sonyBravia
+    case googleTV
+    case vizio
+    case philips
+    case fireTV
+    case appleTV
+    case generic
+    case universal
+
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
         case .roku: "Roku"
-        case .appleTV: "Apple TV"
-        case .googleTV: "Google TV"
+        case .samsungTizen: "Samsung Tizen"
         case .lgWebOS: "LG webOS"
+        case .sonyBravia: "Sony BRAVIA"
+        case .googleTV: "Google TV"
+        case .vizio: "Vizio SmartCast"
+        case .philips: "Philips JointSpace"
+        case .fireTV: "Amazon Fire TV"
+        case .appleTV: "Apple TV"
         case .generic: "Smart TV"
         case .universal: "Universal"
         }
@@ -46,9 +62,14 @@ enum DeviceBrand: String, Codable, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .roku: "r.square.fill"
-        case .appleTV: "apple.logo"
-        case .googleTV: "g.circle.fill"
+        case .samsungTizen: "s.circle.fill"
         case .lgWebOS: "l.circle.fill"
+        case .sonyBravia: "play.tv.fill"
+        case .googleTV: "g.circle.fill"
+        case .vizio: "v.circle.fill"
+        case .philips: "p.circle.fill"
+        case .fireTV: "flame.fill"
+        case .appleTV: "apple.logo"
         case .generic: "display"
         case .universal: "dot.radiowaves.left.and.right"
         }
@@ -58,9 +79,14 @@ enum DeviceBrand: String, Codable, CaseIterable, Identifiable {
     var defaultHex: String {
         switch self {
         case .roku: "#E5213B"       // Crimson
-        case .appleTV: "#B8BCC4"    // Space gray / silver
-        case .googleTV: "#19E3F5"   // Neon cyan
+        case .samsungTizen: "#0066FF" // Samsung Electric Blue
         case .lgWebOS: "#A50034"    // LG Ruby
+        case .sonyBravia: "#FFFFFF" // Sony Monochrome
+        case .googleTV: "#19E3F5"   // Neon cyan
+        case .vizio: "#FF6600"      // Vizio Orange
+        case .philips: "#00A3E0"    // Philips Cyan
+        case .fireTV: "#FF9900"     // Amazon Fire Amber
+        case .appleTV: "#B8BCC4"    // Space gray / silver
         case .generic: "#7C8CFF"
         case .universal: "#FFFFFF"
         }
@@ -69,10 +95,33 @@ enum DeviceBrand: String, Codable, CaseIterable, Identifiable {
     var defaultPort: Int {
         switch self {
         case .roku: 8060
+        case .samsungTizen: 8002
         case .lgWebOS: 3001
+        case .sonyBravia: 80
         case .googleTV: 6466
+        case .vizio: 7345
+        case .philips: 1925
+        case .fireTV: 8008
         case .appleTV: 49153
         case .generic, .universal: 80
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        switch raw.lowercased() {
+        case "roku": self = .roku
+        case "samsung", "samsungtizen", "tizen": self = .samsungTizen
+        case "lgwebos", "lg", "webos": self = .lgWebOS
+        case "sony", "sonybravia", "bravia": self = .sonyBravia
+        case "googletv", "androidtv", "android": self = .googleTV
+        case "vizio", "smartcast": self = .vizio
+        case "philips", "jointspace": self = .philips
+        case "firetv", "fire": self = .fireTV
+        case "appletv", "apple": self = .appleTV
+        case "universal": self = .universal
+        default: self = .generic
         }
     }
 }
@@ -173,39 +222,40 @@ struct RemoteApp: Identifiable, Hashable {
     let id: String
     let name: String
     let symbol: String
+    var dialName: String? = nil
     let ids: [DeviceBrand: String]
 
     static let defaultPresetIDs = ["netflix", "youtube", "spotify", "appletv", "disneyplus", "primevideo", "hulu", "max"]
 
     static let catalog: [RemoteApp] = [
-        .init(id: "netflix", name: "Netflix", symbol: "play.rectangle.fill",
-              ids: [.roku: "12", .lgWebOS: "netflix", .googleTV: "com.netflix.ninja", .appleTV: "com.netflix.Netflix"]),
-        .init(id: "youtube", name: "YouTube", symbol: "play.tv.fill",
-              ids: [.roku: "837", .lgWebOS: "youtube.leanback.v4", .googleTV: "com.google.android.youtube.tv", .appleTV: "com.google.ios.youtube"]),
-        .init(id: "primevideo", name: "Prime Video", symbol: "film.fill",
-              ids: [.roku: "13", .lgWebOS: "amazon", .googleTV: "com.amazon.amazonvideo.livingroom", .appleTV: "com.amazon.aiv.AIVApp"]),
-        .init(id: "disneyplus", name: "Disney+", symbol: "sparkles.tv.fill",
-              ids: [.roku: "291097", .lgWebOS: "com.disney.disneyplus-prod", .googleTV: "com.disney.disneyplus", .appleTV: "com.disney.disneyplus"]),
-        .init(id: "hulu", name: "Hulu", symbol: "play.circle.fill",
-              ids: [.roku: "2285", .lgWebOS: "hulu", .googleTV: "com.hulu.livingroomplus", .appleTV: "com.hulu.plus"]),
-        .init(id: "max", name: "Max", symbol: "tv.fill",
-              ids: [.roku: "61322", .lgWebOS: "com.wbd.stream", .googleTV: "com.wbd.stream", .appleTV: "com.wbd.stream"]),
+        .init(id: "netflix", name: "Netflix", symbol: "play.rectangle.fill", dialName: "Netflix",
+              ids: [.roku: "12", .lgWebOS: "netflix", .samsungTizen: "3201907018807", .sonyBravia: "com.sony.dtv.com.netflix.ninja", .googleTV: "com.netflix.ninja", .fireTV: "Netflix", .appleTV: "com.netflix.Netflix"]),
+        .init(id: "youtube", name: "YouTube", symbol: "play.tv.fill", dialName: "YouTube",
+              ids: [.roku: "837", .lgWebOS: "youtube.leanback.v4", .samsungTizen: "111299001912", .sonyBravia: "com.sony.dtv.com.google.android.youtube.tv", .googleTV: "com.google.android.youtube.tv", .fireTV: "YouTube", .appleTV: "com.google.ios.youtube"]),
+        .init(id: "primevideo", name: "Prime Video", symbol: "film.fill", dialName: "AmazonInstantVideo",
+              ids: [.roku: "13", .lgWebOS: "amazon", .samsungTizen: "3201512006785", .sonyBravia: "com.sony.dtv.com.amazon.amazonvideo.livingroom", .googleTV: "com.amazon.amazonvideo.livingroom", .fireTV: "AmazonVideo", .appleTV: "com.amazon.aiv.AIVApp"]),
+        .init(id: "disneyplus", name: "Disney+", symbol: "sparkles.tv.fill", dialName: "DisneyPlus",
+              ids: [.roku: "291097", .lgWebOS: "com.disney.disneyplus-prod", .samsungTizen: "3201901017640", .sonyBravia: "com.sony.dtv.com.disney.disneyplus", .googleTV: "com.disney.disneyplus", .fireTV: "DisneyPlus", .appleTV: "com.disney.disneyplus"]),
+        .init(id: "hulu", name: "Hulu", symbol: "play.circle.fill", dialName: "Hulu",
+              ids: [.roku: "2285", .lgWebOS: "hulu", .samsungTizen: "3201601007625", .googleTV: "com.hulu.livingroomplus", .fireTV: "Hulu", .appleTV: "com.hulu.plus"]),
+        .init(id: "max", name: "Max", symbol: "tv.fill", dialName: "Max",
+              ids: [.roku: "61322", .lgWebOS: "com.wbd.stream", .samsungTizen: "3202302029707", .googleTV: "com.wbd.stream", .fireTV: "Max", .appleTV: "com.wbd.stream"]),
         .init(id: "appletv", name: "Apple TV", symbol: "appletv.fill",
-              ids: [.roku: "551012", .lgWebOS: "com.apple.appletv", .appleTV: "com.apple.TVWatchList"]),
-        .init(id: "spotify", name: "Spotify", symbol: "waveform.circle.fill",
-              ids: [.roku: "22297", .lgWebOS: "spotify-beehive", .googleTV: "com.spotify.tv.android", .appleTV: "com.spotify.client"]),
-        .init(id: "paramountplus", name: "Paramount+", symbol: "mountain.2.fill",
-              ids: [.roku: "31440", .lgWebOS: "com.cbs.ott", .googleTV: "com.cbs.app", .appleTV: "com.cbs.ott"]),
-        .init(id: "peacock", name: "Peacock", symbol: "bird.fill",
-              ids: [.roku: "593099", .lgWebOS: "com.peacocktv.peacock", .googleTV: "com.peacocktv.peacockandroid", .appleTV: "com.peacocktv.peacock"]),
-        .init(id: "plex", name: "Plex", symbol: "play.square.stack.fill",
-              ids: [.roku: "13535", .lgWebOS: "cdp-30", .googleTV: "com.plexapp.android", .appleTV: "com.plexapp.plex"]),
+              ids: [.roku: "551012", .lgWebOS: "com.apple.appletv", .samsungTizen: "3201807016597", .sonyBravia: "com.apple.atve.sony.appletv", .googleTV: "com.apple.atve.sony.appletv", .fireTV: "AppleTV", .appleTV: "com.apple.TVWatchList"]),
+        .init(id: "spotify", name: "Spotify", symbol: "waveform.circle.fill", dialName: "Spotify",
+              ids: [.roku: "22297", .lgWebOS: "spotify-beehive", .samsungTizen: "3201606009684", .googleTV: "com.spotify.tv.android", .fireTV: "Spotify", .appleTV: "com.spotify.client"]),
+        .init(id: "paramountplus", name: "Paramount+", symbol: "mountain.2.fill", dialName: "ParamountPlus",
+              ids: [.roku: "31440", .lgWebOS: "com.cbs.ott", .samsungTizen: "3201908019041", .googleTV: "com.cbs.app", .appleTV: "com.cbs.ott"]),
+        .init(id: "peacock", name: "Peacock", symbol: "bird.fill", dialName: "Peacock",
+              ids: [.roku: "593099", .lgWebOS: "com.peacocktv.peacock", .samsungTizen: "3202008021439", .googleTV: "com.peacocktv.peacockandroid", .appleTV: "com.peacocktv.peacock"]),
+        .init(id: "plex", name: "Plex", symbol: "play.square.stack.fill", dialName: "Plex",
+              ids: [.roku: "13535", .lgWebOS: "cdp-30", .samsungTizen: "3201512006963", .googleTV: "com.plexapp.android", .appleTV: "com.plexapp.plex"]),
         .init(id: "twitch", name: "Twitch", symbol: "bubble.left.and.bubble.right.fill",
               ids: [.roku: "8838", .lgWebOS: "tv.twitch", .googleTV: "tv.twitch.android.app", .appleTV: "tv.twitch"]),
         .init(id: "tubi", name: "Tubi", symbol: "display",
-              ids: [.roku: "41468", .lgWebOS: "com.tubitv.ott", .googleTV: "com.tubitv", .appleTV: "com.tubitv.ios"]),
+              ids: [.roku: "41468", .lgWebOS: "com.tubitv.ott", .samsungTizen: "3201806016390", .googleTV: "com.tubitv", .appleTV: "com.tubitv.ios"]),
         .init(id: "plutotv", name: "Pluto TV", symbol: "globe.americas.fill",
-              ids: [.roku: "74519", .lgWebOS: "tv.pluto.android", .googleTV: "tv.pluto.android", .appleTV: "tv.pluto.ios"]),
+              ids: [.roku: "74519", .lgWebOS: "tv.pluto.android", .samsungTizen: "3201710015037", .googleTV: "tv.pluto.android", .appleTV: "tv.pluto.ios"]),
         .init(id: "espn", name: "ESPN", symbol: "sportscourt.fill",
               ids: [.roku: "34376", .lgWebOS: "com.espn.ott", .googleTV: "com.espn.score_center", .appleTV: "com.espn.SportCenter"]),
         .init(id: "crunchyroll", name: "Crunchyroll", symbol: "flame.fill",

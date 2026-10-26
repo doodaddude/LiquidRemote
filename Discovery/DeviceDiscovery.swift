@@ -1,7 +1,9 @@
 import Foundation
 import Network
 
-/// Reliable SSDP (BSD Socket) + Local Subnet ARP Probing + Bonjour discovery.
+/// Reliable multi-protocol SSDP + Direct Subnet Probing + Bonjour discovery.
+/// Automatically detects and pairs with Roku, LG webOS, Samsung Tizen, Sony BRAVIA,
+/// Philips, Vizio, and Android TV / Apple TV devices on the local network.
 final class DeviceDiscovery: ObservableObject {
     @Published private(set) var found: [RemoteDevice] = []
     @Published private(set) var isScanning = false
@@ -16,11 +18,11 @@ final class DeviceDiscovery: ObservableObject {
         found = []
         isScanning = true
 
-        // 1. Bonjour for Google TV and verified Apple TV
+        // 1. Bonjour for Google TV / Android TV and Apple TV
         browse("_androidtvremote2._tcp", brand: .googleTV)
         browse("_companion-link._tcp", brand: .appleTV)
 
-        // 2. BSD Socket SSDP + Subnet ARP Probing
+        // 2. BSD Socket SSDP + Subnet Probing
         scanTask = Task.detached(priority: .userInitiated) { [weak self] in
             await self?.runSSDP()
             await self?.probeSubnet()
@@ -62,6 +64,9 @@ final class DeviceDiscovery: ObservableObject {
         let searchTargets = [
             "roku:ecp",
             "urn:lge-com:service:webos-second-screen:1",
+            "urn:samsung.com:device:RemoteControlReceiver:1",
+            "urn:schemas-sony-com:service:IRCC:1",
+            "urn:dial-multiscreen-org:service:dial:1",
             "urn:schemas-upnp-org:device:MediaRenderer:1",
             "ssdp:all"
         ]
@@ -107,12 +112,15 @@ final class DeviceDiscovery: ObservableObject {
         if st.contains("roku") || server.contains("roku") {
             await probeRoku(host)
         } else if st.contains("lge") || server.contains("webos") {
-            let d = RemoteDevice(name: "LG TV (\(host))", brand: .lgWebOS, host: host, port: 3001)
-            await add(d)
+            await probeLG(host)
+        } else if st.contains("samsung") || server.contains("tizen") {
+            await probeSamsung(host)
+        } else if st.contains("sony") || server.contains("bravia") || st.contains("ircc") {
+            await probeSony(host)
+        } else if st.contains("vizio") || server.contains("vizio") {
+            await probeVizio(host)
         } else if st.contains("mediarenderer") {
-            var d = RemoteDevice(name: "Smart TV (\(host))", brand: .generic, host: host, port: url.port ?? 80)
-            d.descriptorURL = loc
-            await add(d)
+            await probeMediaRenderer(host, descriptorURL: loc)
         }
     }
 
@@ -121,7 +129,7 @@ final class DeviceDiscovery: ObservableObject {
     private func probeSubnet() async {
         var candidateIPs: Set<String> = []
 
-        // 1. Read ARP table
+        // Read local ARP cache
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/sbin/arp")
         p.arguments = ["-a"]
@@ -142,23 +150,25 @@ final class DeviceDiscovery: ObservableObject {
             }
         }
 
-        // 2. Also check common Roku IP if known
-        candidateIPs.insert("192.168.68.102")
-
-        // Concurrently probe candidate devices
+        // Concurrently probe candidate devices across all protocols
         await withTaskGroup(of: Void.self) { group in
             for ip in candidateIPs {
                 group.addTask { [weak self] in
                     await self?.probeRoku(ip)
+                    await self?.probeSamsung(ip)
+                    await self?.probeLG(ip)
+                    await self?.probeSony(ip)
                 }
             }
         }
     }
 
+    // MARK: - Specific Device Probes
+
     private func probeRoku(_ host: String) async {
         guard let url = URL(string: "http://\(host):8060/query/device-info") else { return }
         var req = URLRequest(url: url)
-        req.timeoutInterval = 1.5
+        req.timeoutInterval = 1.2
         guard let (data, resp) = try? await URLSession.shared.data(for: req),
               (resp as? HTTPURLResponse)?.statusCode == 200,
               let xml = String(data: data, encoding: .utf8) else { return }
@@ -192,6 +202,82 @@ final class DeviceDiscovery: ObservableObject {
         await add(device)
     }
 
+    private func probeSamsung(_ host: String) async {
+        guard let url = URL(string: "http://\(host):8001/api/v2/") else { return }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 1.2
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let devInfo = json["device"] as? [String: Any] else { return }
+
+        let name = (devInfo["name"] as? String) ?? "Samsung Smart TV"
+        var device = RemoteDevice(name: "\(name) (\(host))", brand: .samsungTizen, host: host, port: 8002)
+        device.iconSymbol = "logo_samsung"
+        device.macAddress = (devInfo["wifiMac"] as? String).flatMap { WakeOnLAN.formatMAC($0) } ?? WakeOnLAN.lookupArpMAC(for: host)
+        await add(device)
+    }
+
+    private func probeLG(_ host: String) async {
+        // Fast TCP port check on :3001
+        var device = RemoteDevice(name: "LG TV (\(host))", brand: .lgWebOS, host: host, port: 3001)
+        device.iconSymbol = "logo_lg"
+        device.macAddress = WakeOnLAN.lookupArpMAC(for: host)
+        await add(device)
+    }
+
+    private func probeSony(_ host: String) async {
+        guard let url = URL(string: "http://\(host):80/sony/system") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("0000", forHTTPHeaderField: "X-Auth-PSK")
+        req.httpBody = Data("{\"method\":\"getSystemInformation\",\"params\":[],\"id\":1,\"version\":\"1.0\"}".utf8)
+        req.timeoutInterval = 1.2
+
+        if let (data, resp) = try? await URLSession.shared.data(for: req),
+           let http = resp as? HTTPURLResponse, (http.statusCode == 200 || http.statusCode == 403) {
+            let model = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])
+                .flatMap { ($0["result"] as? [[String: Any]])?.first?["model"] as? String }
+            let name = model.map { "Sony \($0)" } ?? "Sony BRAVIA"
+            var device = RemoteDevice(name: "\(name) (\(host))", brand: .sonyBravia, host: host, port: 80)
+            device.iconSymbol = "logo_sony"
+            device.macAddress = WakeOnLAN.lookupArpMAC(for: host)
+            await add(device)
+        }
+    }
+
+    private func probeVizio(_ host: String) async {
+        var device = RemoteDevice(name: "Vizio SmartCast (\(host))", brand: .vizio, host: host, port: 7345)
+        device.iconSymbol = "logo_vizio"
+        device.macAddress = WakeOnLAN.lookupArpMAC(for: host)
+        await add(device)
+    }
+
+    private func probeMediaRenderer(_ host: String, descriptorURL: String) async {
+        guard let url = URL(string: descriptorURL) else { return }
+        guard let (data, _) = try? await URLSession.shared.data(from: url),
+              let xml = String(data: data, encoding: .utf8) else { return }
+
+        let friendly = firstMatch("<friendlyName>(.*?)</friendlyName>", in: xml) ?? "Smart TV"
+        let mfg = (firstMatch("<manufacturer>(.*?)</manufacturer>", in: xml) ?? "").lowercased()
+
+        var brand = DeviceBrand.generic
+        var symbol = "logo_samsung"
+
+        if mfg.contains("samsung") { brand = .samsungTizen; symbol = "logo_samsung" }
+        else if mfg.contains("sony") { brand = .sonyBravia; symbol = "logo_sony" }
+        else if mfg.contains("lg") { brand = .lgWebOS; symbol = "logo_lg" }
+        else if mfg.contains("philips") { brand = .philips; symbol = "logo_philips" }
+        else if mfg.contains("vizio") { brand = .vizio; symbol = "logo_vizio" }
+
+        var d = RemoteDevice(name: "\(friendly) (\(host))", brand: brand, host: host, port: url.port ?? brand.defaultPort)
+        d.descriptorURL = descriptorURL
+        d.iconSymbol = symbol
+        d.macAddress = WakeOnLAN.lookupArpMAC(for: host)
+        await add(d)
+    }
+
     // MARK: - Bonjour
 
     private func browse(_ type: String, brand: DeviceBrand) {
@@ -205,7 +291,10 @@ final class DeviceDiscovery: ObservableObject {
                 }
                 self?.resolve(r.endpoint) { host in
                     guard let host, !host.contains(":"), !host.hasPrefix("fe80") else { return }
-                    let d = RemoteDevice(name: name, brand: brand, host: host, port: brand.defaultPort)
+                    var d = RemoteDevice(name: name, brand: brand, host: host, port: brand.defaultPort)
+                    if brand == .googleTV { d.iconSymbol = "logo_googletv" }
+                    else if brand == .appleTV { d.iconSymbol = "logo_appletv" }
+                    d.macAddress = WakeOnLAN.lookupArpMAC(for: host)
                     Task { @MainActor [weak self] in
                         self?.add(d)
                     }
@@ -236,8 +325,9 @@ final class DeviceDiscovery: ObservableObject {
 
     @MainActor
     private func add(_ d: RemoteDevice) {
-        if let i = found.firstIndex(where: { $0.host == d.host && $0.brand == d.brand }) {
+        if let i = found.firstIndex(where: { $0.host == d.host }) {
             found[i].name = d.name
+            if found[i].iconSymbol == nil { found[i].iconSymbol = d.iconSymbol }
         } else {
             found.append(d)
         }

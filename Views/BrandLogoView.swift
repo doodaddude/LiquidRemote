@@ -40,9 +40,14 @@ struct BrandLogoView: View {
         } else {
             name = switch brand {
             case .roku: "logo_roku"
-            case .appleTV: "logo_appletv"
-            case .googleTV: "logo_googletv"
+            case .samsungTizen: "logo_samsung"
             case .lgWebOS: "logo_lg"
+            case .sonyBravia: "logo_sony"
+            case .googleTV: "logo_googletv"
+            case .vizio: "logo_vizio"
+            case .philips: "logo_philips"
+            case .fireTV: "logo_firetv"
+            case .appleTV: "logo_appletv"
             case .generic: "logo_samsung"
             case .universal: "logo_roku"
             }
@@ -122,6 +127,46 @@ struct BrandLogoView: View {
                     .font(.system(size: size * 0.40, weight: .black))
                     .foregroundStyle(.white)
             }
+        case .samsungTizen:
+            ZStack {
+                RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                    .fill(Color(hex: "#0066FF"))
+                Text("SAMSUNG")
+                    .font(.system(size: size * 0.18, weight: .heavy))
+                    .foregroundStyle(.white)
+            }
+        case .sonyBravia:
+            ZStack {
+                RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                    .fill(Color(hex: "#1A1A1A"))
+                Text("SONY")
+                    .font(.system(size: size * 0.22, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+        case .vizio:
+            ZStack {
+                RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                    .fill(Color(hex: "#FF6600"))
+                Text("VIZIO")
+                    .font(.system(size: size * 0.20, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+        case .philips:
+            ZStack {
+                RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                    .fill(Color(hex: "#00A3E0"))
+                Text("PHILIPS")
+                    .font(.system(size: size * 0.18, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+        case .fireTV:
+            ZStack {
+                RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                    .fill(Color(hex: "#FF9900"))
+                Image(systemName: "flame.fill")
+                    .font(.system(size: size * 0.45))
+                    .foregroundStyle(.white)
+            }
         case .universal:
             Image(systemName: "dot.radiowaves.left.and.right")
                 .font(.system(size: size * 0.65))
@@ -138,9 +183,14 @@ struct BrandLogoView: View {
         } else {
             name = switch d.brand {
             case .roku: "menubar_roku"
-            case .appleTV: "menubar_appletv"
-            case .googleTV: "menubar_googletv"
+            case .samsungTizen: "menubar_samsung"
             case .lgWebOS: "menubar_lg"
+            case .sonyBravia: "menubar_sony"
+            case .googleTV: "menubar_googletv"
+            case .vizio: "menubar_vizio"
+            case .philips: "menubar_philips"
+            case .fireTV: "menubar_firetv"
+            case .appleTV: "menubar_appletv"
             case .generic: "menubar_samsung"
             case .universal: "menubar_roku"
             }

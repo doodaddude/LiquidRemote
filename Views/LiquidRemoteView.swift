@@ -234,9 +234,15 @@ struct LiquidRemoteView: View {
                             Button {
                                 store.update(device.id) {
                                     $0.iconSymbol = opt.symbol
-                                    if opt.id == "tv_roku" { $0.brand = .roku }
-                                    else if opt.id == "tv_lg" { $0.brand = .lgWebOS }
-                                    else if opt.id == "tv_samsung" || opt.id == "tv_sony" { $0.brand = .generic }
+                                    switch opt.id {
+                                    case "tv_roku": $0.brand = .roku
+                                    case "tv_lg": $0.brand = .lgWebOS
+                                    case "tv_samsung": $0.brand = .samsungTizen
+                                    case "tv_sony": $0.brand = .sonyBravia
+                                    case "tv_vizio": $0.brand = .vizio
+                                    case "tv_philips": $0.brand = .philips
+                                    default: break
+                                    }
                                 }
                             } label: {
                                 Label(opt.name, systemImage: "tv")
@@ -249,8 +255,13 @@ struct LiquidRemoteView: View {
                             Button {
                                 store.update(device.id) {
                                     $0.iconSymbol = opt.symbol
-                                    if opt.id == "stream_appletv" { $0.brand = .appleTV }
-                                    else if opt.id == "stream_googletv" { $0.brand = .googleTV }
+                                    switch opt.id {
+                                    case "stream_appletv": $0.brand = .appleTV
+                                    case "stream_firetv": $0.brand = .fireTV
+                                    case "stream_googletv", "stream_nvidia", "stream_mibox", "stream_onn", "stream_tivo", "stream_mecool", "stream_formuler", "stream_nokia":
+                                        $0.brand = .googleTV
+                                    default: break
+                                    }
                                 }
                             } label: {
                                 Label(opt.name, systemImage: "play.tv")

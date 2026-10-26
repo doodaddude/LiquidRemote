@@ -47,7 +47,12 @@ enum ControllerFactory {
     static func make(for d: RemoteDevice, tokenSink: @escaping (String) -> Void) -> RemoteController {
         switch d.brand {
         case .roku: RokuController(device: d)
+        case .samsungTizen: SamsungTizenController(device: d, tokenSink: tokenSink)
         case .lgWebOS: LGWebOSController(device: d, tokenSink: tokenSink)
+        case .sonyBravia: SonyBraviaController(device: d)
+        case .vizio: VizioSmartCastController(device: d, tokenSink: tokenSink)
+        case .philips: PhilipsJointSpaceController(device: d)
+        case .fireTV: FireTVController(device: d)
         case .googleTV: AndroidTVController(device: d)
         case .appleTV: AppleTVController(device: d)
         case .generic, .universal: UPnPController(device: d)

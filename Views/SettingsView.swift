@@ -291,8 +291,13 @@ struct SettingsView: View {
             Section("Add Device by IP") {
                 Picker("Brand Category", selection: $manualBrand) {
                     Text("Roku").tag(DeviceBrand.roku)
+                    Text("Samsung Tizen").tag(DeviceBrand.samsungTizen)
                     Text("LG webOS").tag(DeviceBrand.lgWebOS)
-                    Text("Google TV").tag(DeviceBrand.googleTV)
+                    Text("Sony BRAVIA").tag(DeviceBrand.sonyBravia)
+                    Text("Google TV / Android TV").tag(DeviceBrand.googleTV)
+                    Text("Vizio SmartCast").tag(DeviceBrand.vizio)
+                    Text("Philips JointSpace").tag(DeviceBrand.philips)
+                    Text("Amazon Fire TV").tag(DeviceBrand.fireTV)
                     Text("Apple TV").tag(DeviceBrand.appleTV)
                     Text("Smart TV (UPnP)").tag(DeviceBrand.generic)
                 }
@@ -402,6 +407,19 @@ struct SettingsView: View {
                                   brand: brand,
                                   host: host,
                                   port: brand.defaultPort)
+
+        switch brand {
+        case .samsungTizen: device.iconSymbol = "logo_samsung"
+        case .sonyBravia: device.iconSymbol = "logo_sony"
+        case .lgWebOS: device.iconSymbol = "logo_lg"
+        case .vizio: device.iconSymbol = "logo_vizio"
+        case .philips: device.iconSymbol = "logo_philips"
+        case .fireTV: device.iconSymbol = "logo_firetv"
+        case .googleTV: device.iconSymbol = "logo_googletv"
+        case .appleTV: device.iconSymbol = "logo_appletv"
+        case .roku: device.iconSymbol = "logo_roku"
+        default: break
+        }
 
         let macEntered = manualMAC.trimmingCharacters(in: .whitespaces)
         device.macAddress = !macEntered.isEmpty ? WakeOnLAN.formatMAC(macEntered) : WakeOnLAN.lookupArpMAC(for: host)
